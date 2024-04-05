@@ -4,11 +4,19 @@
 import { Location, MarkdownString, TestItem, TestMessage } from 'vscode';
 import { dataCache, ITestItemData } from '../../controller/testItemDataCache';
 import { createTestItem, updateOrCreateTestItem } from '../../controller/utils';
+import { CloudLabRequestDTO } from '../../dto/request/cloud-lab-request-dto';
+import { MetricsDetails } from '../../service/metrics-details';
 import { IJavaTestItem, IRunTestContext, TestKind, TestLevel } from '../../types';
+import { AppConstants } from '../../util/app-constants';
+import { InternConstants } from '../../util/intern-constants';
 import { RunnerResultAnalyzer } from '../baseRunner/RunnerResultAnalyzer';
 import { findTestLocation, setTestState, TestResultState } from '../utils';
 import { JUnitTestPart } from '../../constants';
+import { AppUtil } from '../../util/app-util';
+const fs = require("fs");
 
+let metricsDetails = new MetricsDetails();
+let testCaseStackTrace :string ="";
 
 export class JUnitRunnerResultAnalyzer extends RunnerResultAnalyzer {
 
@@ -27,7 +35,7 @@ export class JUnitRunnerResultAnalyzer extends RunnerResultAnalyzer {
     private recordingType: RecordingType;
     private expectString: string;
     private actualString: string;
-
+    private resdataArray: { currentItem: string; result: TestResultState.Queued | TestResultState.Passed | TestResultState.Failed | TestResultState.Skipped | TestResultState.Errored; }[]=[];
     constructor(protected testContext: IRunTestContext) {
         super(testContext);
         this.projectName = testContext.projectName;
@@ -48,14 +56,120 @@ export class JUnitRunnerResultAnalyzer extends RunnerResultAnalyzer {
         }
     }
 
-    public analyzeData(data: string): void {
+    public async analyzeData(data: string,status:string,cloudLabRequestDTO?:CloudLabRequestDTO): void {
         const lines: string[] = data.split(/\r?\n/);
         for (const line of lines) {
             this.processData(line);
             this.testContext.testRun.appendOutput(line + '\r\n');
         }
-    }
 
+        if(cloudLabRequestDTO!==null && cloudLabRequestDTO!==undefined){
+            AppUtil.sendExtensionLogToRevPro(this.resdataArray,cloudLabRequestDTO.revproWorkspaceId,"AnalyzeData in JunitResultAnalyzer");
+        }
+        if(this.resdataArray?.length>=1){
+            let passed=0;
+            let failed=0;
+            let skipped=0;
+            let errored =0;
+          for (const res of this.resdataArray){
+             if(res.result == 3){
+                passed++
+            }else if(res.result == 4){
+                failed++;
+            }
+            else if(res.result == 5){
+                skipped++;
+            }
+            else if(res.result == 6){
+                errored++;
+            }
+             
+          }
+          if(status === AppConstants.ON_RUNNING){
+            testCaseStackTrace = testCaseStackTrace + lines.toString();
+          }
+          let total = passed+failed+errored+skipped;
+          let testCaseRunMessage: string = AppConstants.TEST_RUN.concat(total.toString())
+          .concat(AppConstants.PASSED).concat(passed.toString())
+          .concat(AppConstants.FAILED).concat(failed.toString())
+          .concat(AppConstants.ERRORED).concat(errored.toString())
+          .concat(AppConstants.SKIPPED).concat(skipped.toString());
+          let testCasesCount =0;        
+          if(cloudLabRequestDTO!==null && cloudLabRequestDTO!==undefined){
+            AppUtil.sendExtensionLogToRevPro(status,cloudLabRequestDTO.revproWorkspaceId,"Before constructing requestDTO in JunitResultAnalyzer");
+          }
+          if (
+            cloudLabRequestDTO !== undefined && cloudLabRequestDTO !== null &&
+            cloudLabRequestDTO.cloudLabCommitDetailsDTO !== null && status === AppConstants.ON_TERMINATE
+          ) {
+            metricsDetails.constructTestCaseResult(
+              cloudLabRequestDTO,
+              testCaseRunMessage,
+              testCaseStackTrace
+            );
+            testCaseStackTrace=""
+          } else {
+            if(cloudLabRequestDTO!==null && cloudLabRequestDTO!==undefined){
+                AppUtil.sendExtensionLogToRevPro(this.testContext.testItems,cloudLabRequestDTO.revproWorkspaceId,"AnalyzeData(if status is not terminate) in JunitResultAnalyzer");
+            }
+            if (this.testContext.testItems.length === 1) {
+              if (
+                this.testContext.testItems[0].id.includes("@") &&
+                this.testContext.testItems[0].id.includes("#") &&
+                status === AppConstants.ON_TERMINATE
+              ) {
+                metricsDetails.sendTestCaseResult(testCaseRunMessage, testCaseStackTrace);
+                testCaseStackTrace =""
+              } else {
+                testCasesCount = this.countTestCasesCount(
+                  this.testContext.testItems[0],
+                  testCasesCount
+                );
+              }
+            } else if (this.testContext.testItems.length > 1) {
+              this.testContext.testItems.forEach((testItem) => {
+                testCasesCount = this.countTestCasesCount(testItem, testCasesCount);
+              });
+            }
+            if (
+              testCasesCount > 0 &&
+              testCasesCount === this.resdataArray.length &&
+              status === AppConstants.ON_TERMINATE
+            ) {
+                if(cloudLabRequestDTO!==null && cloudLabRequestDTO!==undefined){
+                    AppUtil.sendExtensionLogToRevPro(status,cloudLabRequestDTO.revproWorkspaceId,"Send sendTestCaseResult from JunitResultAnalyzer");
+                  }
+              metricsDetails.sendTestCaseResult(testCaseRunMessage, testCaseStackTrace);
+              testCaseStackTrace=""
+            }
+          }
+          
+    }
+    }
+ countTestCasesCount(testItem : any,testsCount:number){
+        if(testItem.id.includes("@")){
+            let fileName : string[] = testItem.id.split("@");
+            let filePath :string =InternConstants.getGitRepoRoots()?.concat(AppConstants.TEST_FOLDER_PACKAGE).concat("/"+fileName[1].replaceAll(".","/")).concat(AppConstants.JAVA_EXT);          
+            const testFile =fs.readFileSync(filePath,{ encoding: "utf8", flag: "r" });
+            let testFileDataList : string[]= testFile.split("\n");
+            if (testFileDataList.length > 0) {
+              for (let lineCount = 0; lineCount < testFileDataList.length; lineCount++) {
+                if (testFileDataList[lineCount]?.includes(AppConstants.TEST_ANNOTATION)
+                    && (!testFileDataList[lineCount]?.includes("*")
+                        || !testFileDataList[lineCount]?.includes("//"))) {
+                  if (lineCount + 1 < testFileDataList.length
+                      && (testFileDataList[lineCount + 1]?.includes(AppConstants.PUBLIC_VOID)
+                      || testFileDataList[lineCount + 1]?.includes(AppConstants.VOID)
+                      || testFileDataList[lineCount + 1]?.includes(AppConstants.PRIVATE))) {
+                        testsCount = testsCount + 1;
+                  }
+                }
+              }
+            }
+        }
+        return testsCount;  
+                 
+     }
     public processData(data: string): void {
         if (data.startsWith(MessageId.TestTree)) {
             this.enlistToTestMapping(data.substring(MessageId.TestTree.length).trim());
@@ -63,7 +177,8 @@ export class JUnitRunnerResultAnalyzer extends RunnerResultAnalyzer {
             const item: TestItem | undefined = this.getTestItem(data.substr(MessageId.TestStart.length));
             if (!item) {
                 return;
-            }
+            }    
+
             this.setCurrentState(item, TestResultState.Running, 0);
             this.setDurationAtStart(this.getCurrentState(item));
             setTestState(this.testContext.testRun, item, this.getCurrentState(item).resultState);
@@ -76,6 +191,12 @@ export class JUnitRunnerResultAnalyzer extends RunnerResultAnalyzer {
             this.calcDurationAtEnd(currentState);
             this.determineResultStateAtEnd(data, currentState);
             setTestState(this.testContext.testRun, item, currentState.resultState, undefined, currentState.duration);
+            //Have to get test result from map.
+            let resdata={
+                "currentItem":this.currentItem.id,
+                "result":this.currentTestState,
+            }
+            this.resdataArray.push(resdata);
         } else if (data.startsWith(MessageId.TestFailed)) {
             const item: TestItem | undefined = this.getTestItem(data.substr(MessageId.TestFailed.length));
             if (!item) {

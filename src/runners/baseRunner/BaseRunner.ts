@@ -11,8 +11,11 @@ import { Configurations } from '../../constants';
 import { IProgressReporter } from '../../debugger.api';
 import { IExecutionConfig } from '../../runConfigs';
 import { IRunTestContext } from '../../types';
+import { AppConstants } from '../../util/app-constants';
 import { ITestRunner } from '../ITestRunner';
 import { RunnerResultAnalyzer } from './RunnerResultAnalyzer';
+import { CloudLabRequestDTO } from '../../dto/request/cloud-lab-request-dto';
+import { AppUtil } from '../../util/app-util';
 
 export abstract class BaseRunner implements ITestRunner {
     protected server: Server;
@@ -28,7 +31,7 @@ export abstract class BaseRunner implements ITestRunner {
         this.runnerResultAnalyzer = this.getAnalyzer();
     }
 
-    public async run(launchConfiguration: DebugConfiguration, token: CancellationToken, progressReporter?: IProgressReporter): Promise<void> {
+    public async run(launchConfiguration: DebugConfiguration, token: CancellationToken, progressReporter?: IProgressReporter, cloudLabRequestDTO?:CloudLabRequestDTO): Promise<void> {
         let data: string = '';
         this.server.on('connection', (socket: Socket) => {
             this.socket = socket;
@@ -40,7 +43,10 @@ export abstract class BaseRunner implements ITestRunner {
                 data = data.concat(iconv.decode(buffer, launchConfiguration.encoding || 'utf8'));
                 const index: number = data.lastIndexOf(os.EOL);
                 if (index >= 0) {
-                    this.runnerResultAnalyzer.analyzeData(data.substring(0, index + os.EOL.length));
+                    if(cloudLabRequestDTO!==null && cloudLabRequestDTO!==undefined){
+                        AppUtil.sendExtensionLogToRevPro(null,cloudLabRequestDTO.revproWorkspaceId,"analyzeData from BaseRunner");
+                        }
+                    this.runnerResultAnalyzer.analyzeData(data.substring(0, index + os.EOL.length),AppConstants.ON_RUNNING,cloudLabRequestDTO);
                     data = data.substring(index + os.EOL.length);
                 }
             });
@@ -85,8 +91,8 @@ export abstract class BaseRunner implements ITestRunner {
                         if (launchConfiguration.name === session.name) {
                             debugSession = undefined;
                             this.tearDown();
-                            if (data.length > 0) {
-                                this.runnerResultAnalyzer.analyzeData(data);
+                            if (data.length >= 0) {
+                                this.runnerResultAnalyzer.analyzeData(data,AppConstants.ON_TERMINATE,cloudLabRequestDTO);
                             }
                             return resolve();
                         }

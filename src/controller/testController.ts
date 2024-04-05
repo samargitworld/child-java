@@ -7,6 +7,7 @@ import { CancellationToken, DebugConfiguration, Disposable, FileCoverage, FileCo
 import { instrumentOperation, sendError, sendInfo } from 'vscode-extension-telemetry-wrapper';
 import { refreshExplorer } from '../commands/testExplorerCommands';
 import { IProgressReporter } from '../debugger.api';
+import { CloudLabRequestDTO } from '../dto/request/cloud-lab-request-dto';
 import { progressProvider } from '../extension';
 import { testSourceProvider } from '../provider/testSourceProvider';
 import { IExecutionConfig } from '../runConfigs';
@@ -18,6 +19,7 @@ import { loadRunConfig } from '../utils/configUtils';
 import { resolveLaunchConfigurationForRunner } from '../utils/launchUtils';
 import { dataCache, ITestItemData } from './testItemDataCache';
 import { findDirectTestChildrenForClass, findTestPackagesAndTypes, findTestTypesAndMethods, loadJavaProjects, resolvePath, synchronizeItemsRecursively, updateItemForDocumentWithDebounce } from './utils';
+import { AppUtil } from '../util/app-util';
 import { JavaTestCoverageProvider } from '../provider/JavaTestCoverageProvider';
 
 export let testController: TestController | undefined;
@@ -26,7 +28,7 @@ export const runnableTag: TestTag = new TestTag('runnable');
 
 export function createTestController(): void {
     testController?.dispose();
-    testController = tests.createTestController('java', 'Java Test');
+    testController = tests.createTestController('java Rev', 'Java Test Revature');
 
     testController.resolveHandler = async (item: TestItem) => {
         await loadChildren(item);
@@ -138,7 +140,7 @@ async function runHandler(request: TestRunRequest, token: CancellationToken): Pr
     await runTests(request, { token, isDebug: !!request.profile?.label.includes('Debug') });
 }
 
-export const runTests: (request: TestRunRequest, option: IRunOption) => any = instrumentOperation('java.test.runTests', async (operationId: string, request: TestRunRequest, option: IRunOption) => {
+export const runTests: (request: TestRunRequest, option: IRunOption, cloudLabRequestDTO?:CloudLabRequestDTO) => any = instrumentOperation('java.test.runTests', async (operationId: string, request: TestRunRequest, option: IRunOption) => {
     sendInfo(operationId, {
         isDebug: `${option.isDebug}`,
         profile: request.profile?.label ?? 'UNKNOWN',
@@ -238,7 +240,10 @@ export const runTests: (request: TestRunRequest, option: IRunOption) => any = in
                             resolvedConfiguration.__progressId = option.progressReporter?.getId();
                             delegatedToDebugger = true;
                             trackTestFrameworkVersion(testContext.kind, resolvedConfiguration.classPaths, resolvedConfiguration.modulePaths);
-                            await runner.run(resolvedConfiguration, token, option.progressReporter);
+                            if(cloudLabRequestDTO!==null && cloudLabRequestDTO!==undefined){
+                                AppUtil.sendExtensionLogToRevPro(null,cloudLabRequestDTO.revproWorkspaceId,"Run from testController");
+                            }
+                            await runner.run(resolvedConfiguration, token, option.progressReporter, cloudLabRequestDTO);
                         } catch (error) {
                             window.showErrorMessage(error.message || 'Failed to run tests.');
                             option.progressReporter?.done();

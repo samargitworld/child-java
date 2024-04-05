@@ -4,12 +4,14 @@
 import { AddressInfo } from 'net';
 import { CancellationToken, DebugConfiguration } from 'vscode';
 import { IProgressReporter } from '../../debugger.api';
+import { CloudLabRequestDTO } from '../../dto/request/cloud-lab-request-dto';
 import { BaseRunner } from '../baseRunner/BaseRunner';
 import { RunnerResultAnalyzer } from '../baseRunner/RunnerResultAnalyzer';
 import { JUnitRunnerResultAnalyzer } from './JUnitRunnerResultAnalyzer';
+import { AppUtil } from '../../util/app-util';
 
 export class JUnitRunner extends BaseRunner {
-    public async run(launchConfiguration: DebugConfiguration, token: CancellationToken, progressReporter?: IProgressReporter): Promise<void> {
+    public async run(launchConfiguration: DebugConfiguration, token: CancellationToken, progressReporter?: IProgressReporter,cloudLabRequestDTO?:CloudLabRequestDTO): Promise<void> {
         if (launchConfiguration.args) {
             // We need to replace the socket port number since the socket is established from the client side.
             // The port number returned from the server side is a fake one.
@@ -22,7 +24,10 @@ export class JUnitRunner extends BaseRunner {
             }
         }
 
-        return super.run(launchConfiguration, token, progressReporter);
+        if(cloudLabRequestDTO!==null && cloudLabRequestDTO!==undefined){
+            AppUtil.sendExtensionLogToRevPro(null,cloudLabRequestDTO.revproWorkspaceId,"Run from JunitRunner");
+        }
+        return super.run(launchConfiguration, token, progressReporter,cloudLabRequestDTO);
     }
 
     protected getAnalyzer(): RunnerResultAnalyzer {

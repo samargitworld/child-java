@@ -35,19 +35,21 @@ export class RestConstants {
   public static PRODUCE_EXTENSION_LOG = `https://${this.getDomain()}${this.CLOUD_LAB_URL}logs`;
 
   static getDomain(): string {
-    let encryptedDomain = this.getDomainFromFile();
-    if(encryptedDomain==""){
-      return Buffer.from(process.env.HOST!, BASE_64).toString(BINARY);
-    }
-    return Buffer.from(encryptedDomain!, BASE_64).toString(BINARY);
+    // let encryptedDomain = this.getDomainFromFile();
+    // if(encryptedDomain==""){
+    //   return Buffer.from(process.env.HOST!, BASE_64).toString(BINARY);
+    // }
+    // return Buffer.from(encryptedDomain!, BASE_64).toString(BINARY);
+    return "Dev"
   }
   static getAccessToken() {
-    let context = getContext();
-    let workspaceStorageManager = new LocalStorageService(context.workspaceState);
-    if(workspaceStorageManager.getValue(AppConstants.IS_GITPOD)){
-      return process.env.TOKEN;
-    }
-    return workspaceStorageManager.getValue("TOKEN")!;
+    // let context = getContext();
+    // let workspaceStorageManager = new LocalStorageService(context.workspaceState);
+    // if(workspaceStorageManager.getValue(AppConstants.IS_GITPOD)){
+    //   return process.env.TOKEN;
+    // }
+    // return workspaceStorageManager.getValue("TOKEN")!;
+    return "";
   }
   static getDomainFromFile():string{
     const workspaceFolders = vscode.workspace.workspaceFolders;

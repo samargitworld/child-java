@@ -4,11 +4,11 @@
 import * as path from 'path';
 import { Location, MarkdownString, Range, TestItem } from 'vscode';
 import { IRunTestContext } from '../../types';
-
+import { CloudLabRequestDTO } from '../../dto/request/cloud-lab-request-dto';
 export abstract class RunnerResultAnalyzer {
     constructor(protected testContext: IRunTestContext) { }
 
-    public abstract analyzeData(data: string): void;
+    public abstract analyzeData(data: string,status:string,cloudLabRequestDTO?:CloudLabRequestDTO): void;
     public abstract processData(data: string): void;
     protected testMessageLocation: Location | undefined;
 

@@ -62,6 +62,7 @@ function updateVersion() {
         fs.writeFileSync(path.resolve('package.json'), JSON.stringify(packageJsonData, null, 4));
         fs.appendFileSync(path.resolve('package.json'), os.EOL);
     }
+    console.log("sasi"+"update complete");
 }
 
 // The plugin jar follows the name convention: <name>_<version>.jar

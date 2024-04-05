@@ -10,19 +10,16 @@ export class InternConstants {
   static internId: number;
 
   static getTraineeCodingLabId(): Number {
-    let context = getContext();
-    let workspaceStorageManager = new LocalStorageService(context.workspaceState);
-    return workspaceStorageManager.getValue(AppConstants.IS_GITPOD) ?
-      Number(Buffer.from(process.env.TRAINEE_CODING_LAB_ID!, BASE_64).toString(BINARY)):
-      Number(Buffer.from(workspaceStorageManager.getValue("TRAINEE_CODING_LAB_ID")!, BASE_64).toString(BINARY));
+    return 1;
    }
    
    static getProjectCode(): string {
-     let context = getContext();
-     let workspaceStorageManager = new LocalStorageService(context.workspaceState);
-     return workspaceStorageManager.getValue(AppConstants.IS_GITPOD) ? 
-     Buffer.from(process.env.PROJECT_TYPE!, BASE_64).toString(BINARY):
-     Buffer.from(workspaceStorageManager.getValue("PROJECT_TYPE")!, BASE_64).toString(BINARY);
+    //  let context = getContext();
+    //  let workspaceStorageManager = new LocalStorageService(context.workspaceState);
+    //  return workspaceStorageManager.getValue(AppConstants.IS_GITPOD) ? 
+    //  Buffer.from(process.env.PROJECT_TYPE!, BASE_64).toString(BINARY):
+    //  Buffer.from(workspaceStorageManager.getValue("PROJECT_TYPE")!, BASE_64).toString(BINARY);
+    return "PT001";
    }
 
   static setInternId(internId: number) {
