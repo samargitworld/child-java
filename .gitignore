@@ -30,15 +30,15 @@ hs_err_pid*
 **/node_modules/
 .DS_Store
 target/
-.classpath
-.project
 .settings
+test/**/.classpath
+test/**/.project
 **/.checkstyle
 target/
 bin/
 **/lib/
 out/
-
+server/
 .jqwik-database
 
 jdtls/
@@ -53,6 +53,3 @@ resources/templates/css/**
 resources/templates/js/**
 resources/templates/fonts/**
 dist
-**/vscode.d.ts
-**/vscode.proposed.d.ts
-.vscode-test/

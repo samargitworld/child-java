@@ -3,7 +3,6 @@
 
 //@ts-check
 const path = require('path');
-const { experiments } = require('webpack');
 
 /**@type {import('webpack').Configuration}*/
 const config = {
@@ -38,9 +37,6 @@ const config = {
                 loader: 'ts-loader',
             }]
         }]
-    },
-    experiments : {
-        topLevelAwait: true,
-      }
+    }
 }
 module.exports = config;

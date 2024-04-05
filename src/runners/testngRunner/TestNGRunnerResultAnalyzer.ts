@@ -40,13 +40,12 @@ export class TestNGRunnerResultAnalyzer extends RunnerResultAnalyzer {
         }
     }
 
-    public analyzeData(data: string,status:string): void {
+    public analyzeData(data: string): void {
         let match: RegExpExecArray | null;
-        console.log(status)
         // tslint:disable-next-line: no-conditional-assignment
         while ((match = this.regex.exec(data)) !== null) {
             try {
-               this.processData(match[1]);
+                this.processData(match[1]);
             } catch (error) {
                 this.testContext.testRun.appendOutput(`[ERROR] Failed to parse output data: ${match[1]}\n`);
             }
@@ -78,10 +77,9 @@ export class TestNGRunnerResultAnalyzer extends RunnerResultAnalyzer {
             if (outputData.attributes.trace) {
                 const markdownTrace: MarkdownString = new MarkdownString();
                 markdownTrace.isTrusted = true;
-                markdownTrace.supportHtml = true;
 
                 for (const line of outputData.attributes.trace.split(/\r?\n/)) {
-                    this.processStackTrace(line, markdownTrace, undefined, this.currentItem, this.projectName);
+                    this.processStackTrace(line, markdownTrace, this.currentItem, this.projectName);
                 }
 
                 const testMessage: TestMessage = new TestMessage(markdownTrace);

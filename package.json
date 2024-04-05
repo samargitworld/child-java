@@ -2,14 +2,30 @@
     "name": "local-rev",
     "displayName": "LocalRev",
     "description": "Revtracker",
-    "version": "0.0.8",
+    "repository": {
+        "url": "https://github.com/Microsoft/vscode-java-test"
+    },
+    "version": "0.0.11",
     "publisher": "local-Rev",
-    "icon":"resources/logo.png",
+    "bugs": {
+        "url": "https://github.com/Microsoft/vscode-java-test/issues"
+    },
+    "homepage": "https://github.com/Microsoft/vscode-java-test",
+    "preview": false,
+    "icon": "resources/logo.png",
+    "keywords": [
+        "java",
+        "test",
+        "junit",
+        "testng",
+        "debug"
+    ],
+    "aiKey": "90c182a8-8dab-45d4-bfb8-1353eb55aa7f",
     "engines": {
-        "vscode": "^1.72.0"
+        "vscode": "^1.88.0"
     },
     "categories": [
-        "Other"
+        "Testing"
     ],
     "capabilities": {
         "virtualWorkspaces": false,
@@ -19,8 +35,7 @@
     },
     "activationEvents": [
         "onLanguage:java",
-        "workspaceContains:.gitpod.yml",
-        "workspaceContains:.vscode/tasks.json",
+        "workspaceContains:pom.xml",
         "workspaceContains:*/pom.xml",
         "workspaceContains:build.gradle",
         "workspaceContains:*/build.gradle",
@@ -31,28 +46,33 @@
         "workspaceContains:settings.gradle.kts",
         "workspaceContains:*/settings.gradle.kts",
         "workspaceContains:.classpath",
-        "workspaceContains:*/.classpath"
+        "workspaceContains:*/.classpath",
+        "onCommand:java.test.editor.run",
+        "onCommand:java.test.editor.debug",
+        "onCommand:java.test.runFromJavaProjectExplorer",
+        "onCommand:java.test.debugFromJavaProjectExplorer"
     ],
     "main": "./main.js",
     "contributes": {
         "javaExtensions": [
-            "./server/junit-jupiter-api_5.9.0.jar",
-            "./server/junit-jupiter-engine_5.9.0.jar",
-            "./server/junit-jupiter-migrationsupport_5.9.0.jar",
-            "./server/junit-jupiter-params_5.9.0.jar",
-            "./server/junit-platform-commons_1.9.0.jar",
-            "./server/junit-platform-engine_1.9.0.jar",
-            "./server/junit-platform-launcher_1.9.0.jar",
-            "./server/junit-platform-runner_1.9.0.jar",
-            "./server/junit-platform-suite-api_1.9.0.jar",
-            "./server/junit-platform-suite-commons_1.9.0.jar",
-            "./server/junit-platform-suite-engine_1.9.0.jar",
-            "./server/junit-vintage-engine_5.9.0.jar",
+            "./server/junit-jupiter-api_5.9.3.jar",
+            "./server/junit-jupiter-engine_5.9.3.jar",
+            "./server/junit-jupiter-migrationsupport_5.9.3.jar",
+            "./server/junit-jupiter-params_5.9.3.jar",
+            "./server/junit-platform-commons_1.9.3.jar",
+            "./server/junit-platform-engine_1.9.3.jar",
+            "./server/junit-platform-launcher_1.9.3.jar",
+            "./server/junit-platform-runner_1.9.3.jar",
+            "./server/junit-platform-suite-api_1.9.3.jar",
+            "./server/junit-platform-suite-commons_1.9.3.jar",
+            "./server/junit-platform-suite-engine_1.9.3.jar",
+            "./server/junit-vintage-engine_5.9.3.jar",
             "./server/org.apiguardian.api_1.1.2.jar",
             "./server/org.eclipse.jdt.junit4.runtime_1.3.0.v20220609-1843.jar",
-            "./server/org.eclipse.jdt.junit5.runtime_1.1.0.v20220715-1030.jar",
-            "./server/org.opentest4j_1.2.0.v20190826-0900.jar",
-            "./server/com.microsoft.java.test.plugin-0.37.1.jar"
+            "./server/org.eclipse.jdt.junit5.runtime_1.1.100.v20220907-0450.jar",
+            "./server/org.opentest4j_1.2.0.jar",
+            "./server/org.jacoco.core_0.8.11.202310140853.jar",
+            "./server/com.microsoft.java.test.plugin-0.41.0.jar"
         ],
         "viewsWelcome": [
             {
@@ -70,17 +90,17 @@
             "view/item/context": [
                 {
                     "command": "java.test.runFromJavaProjectExplorer",
-                    "when": "view == javaProjectExplorer && viewItem =~ /java:(type|package|packageRoot)(?=.*?\\b\\+uri\\b)(?=.*?\\b\\+test\\b)/",
+                    "when": "view == javaProjectExplorer && viewItem =~ /java:(type|package|packageRoot)(?=.*?\\b\\+uri\\b)(?=.*?\\b\\+test\\b)(?!.*?\\b\\+resource\\b)/",
                     "group": "8_execution@10"
                 },
                 {
                     "command": "java.test.debugFromJavaProjectExplorer",
-                    "when": "view == javaProjectExplorer && viewItem =~ /java:(type|package|packageRoot)(?=.*?\\b\\+uri\\b)(?=.*?\\b\\+test\\b)/",
+                    "when": "view == javaProjectExplorer && viewItem =~ /java:(type|package|packageRoot)(?=.*?\\b\\+uri\\b)(?=.*?\\b\\+test\\b)(?!.*?\\b\\+resource\\b)/",
                     "group": "8_execution@20"
                 },
                 {
                     "command": "java.test.runFromJavaProjectExplorer",
-                    "when": "view == javaProjectExplorer && viewItem =~ /java:(type|package|packageRoot)(?=.*?\\b\\+uri\\b)(?=.*?\\b\\+test\\b)/",
+                    "when": "view == javaProjectExplorer && viewItem =~ /java:(type|package|packageRoot)(?=.*?\\b\\+uri\\b)(?=.*?\\b\\+test\\b)(?!.*?\\b\\+resource\\b)/",
                     "group": "inline@run_0"
                 }
             ],
@@ -125,10 +145,6 @@
         },
         "commands": [
             {
-                "command": "gitExtension.apikey",
-                "title": "gitExtension: Api Key"
-            },
-            {
                 "command": "java.test.goToTest",
                 "title": "%contributes.commands.java.test.goToTest.title%",
                 "category": "Java"
@@ -163,18 +179,6 @@
         "configuration": {
             "title": "Test Runner for Java",
             "properties": {
-                "reader-mode.auto.outOfWorkspace": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Whether to automatically open files outside of the workspace in reader mode."
-                },
-                "reader-mode.auto.glob": {
-                    "type": "array",
-                    "default": [
-                        "**/node_modules/**"
-                    ],
-                    "description": "A list of glob to match against the path of the file to determine if it should be opened in reader mode automatically."
-                },
                 "java.test.defaultConfig": {
                     "type": "string",
                     "description": "%configuration.java.test.defaultConfig.description%",
@@ -245,6 +249,11 @@
                             "description": "%configuration.java.test.config.modulePaths.description%",
                             "default": []
                         },
+                        "javaExec": {
+                            "type": "string",
+                            "markdownDescription": "%configuration.java.test.config.javaExec.description%",
+                            "default": ""
+                        },
                         "vmArgs": {
                             "type": "array",
                             "items": {
@@ -284,6 +293,11 @@
                             "description": "%configuration.java.test.config.preLaunchTask.description%",
                             "default": ""
                         },
+                        "postDebugTask": {
+                            "type": "string",
+                            "description": "%configuration.java.test.config.postDebugTask.description%",
+                            "default": ""
+                        },
                         "testKind": {
                             "type": "string",
                             "markdownDescription": "%configuration.java.test.config.testKind.description%",
@@ -305,6 +319,23 @@
                                     },
                                     "markdownDescription": "%configuration.java.test.config.filters.tags.description%",
                                     "default": []
+                                }
+                            }
+                        },
+                        "when": {
+                            "type": "string",
+                            "markdownDescription": "%configuration.java.test.config.when.description%",
+                            "default": ""
+                        },
+                        "coverage": {
+                            "type": "object",
+                            "description": "%configuration.java.test.config.coverage.description%",
+                            "default": {},
+                            "properties": {
+                                "appendResult": {
+                                    "type": "boolean",
+                                    "description": "%configuration.java.test.config.coverage.appendResult.description%",
+                                    "default": true
                                 }
                             }
                         }
@@ -373,6 +404,11 @@
                                 "description": "%configuration.java.test.config.modulePaths.description%",
                                 "default": []
                             },
+                            "javaExec": {
+                                "type": "string",
+                                "markdownDescription": "%configuration.java.test.config.javaExec.description%",
+                                "default": ""
+                            },
                             "vmargs": {
                                 "type": "array",
                                 "items": {
@@ -412,6 +448,11 @@
                                 "description": "%configuration.java.test.config.preLaunchTask.description%",
                                 "default": ""
                             },
+                            "postDebugTask": {
+                                "type": "string",
+                                "description": "%configuration.java.test.config.postDebugTask.description%",
+                                "default": ""
+                            },
                             "testKind": {
                                 "type": "string",
                                 "markdownDescription": "%configuration.java.test.config.testKind.description%",
@@ -435,6 +476,23 @@
                                         "default": []
                                     }
                                 }
+                            },
+                            "when": {
+                                "type": "string",
+                                "markdownDescription": "%configuration.java.test.config.when.description%",
+                                "default": ""
+                            },
+                            "coverage": {
+                                "type": "object",
+                                "description": "%configuration.java.test.config.coverage.description%",
+                                "default": {},
+                                "properties": {
+                                    "appendResult": {
+                                        "type": "boolean",
+                                        "description": "%configuration.java.test.config.coverage.appendResult.description%",
+                                        "default": true
+                                    }
+                                }
                             }
                         }
                     },
@@ -447,15 +505,9 @@
         "compile": "tsc -p ./",
         "watch": "webpack --mode development --watch",
         "test": "npm run compile && node ./out/test/index.js",
-        "lint": "tslint -t verbose --project tsconfig.json",
+        "lint": "eslint -c .eslintrc.js --ext .ts ./src",
         "build-plugin": "node scripts/buildJdtlsExt.js",
-        "vscode:prepublish": "webpack --mode production",
-        "package": "webpack --mode production --devtool hidden-source-map",
-        "compile-tests": "tsc -p . --outDir out",
-        "watch-tests": "tsc -p . -w --outDir out",
-        "pretest": "npm run compile-tests && npm run compile && npm run lint",
-        "spotlessApply": "prettier src/**/*.{ts,js,json,md}  --write",
-        "spotlessCheck": "prettier src/**/*.{ts,js,json,md} --c"
+        "vscode:prepublish": "webpack --mode production"
     },
     "extensionDependencies": [
         "redhat.java",
@@ -464,34 +516,32 @@
     "devDependencies": {
         "@types/fs-extra": "^9.0.13",
         "@types/glob": "^7.2.0",
-        "@types/lodash": "^4.14.190",
+        "@types/lodash": "^4.14.191",
         "@types/lru-cache": "^7.10.10",
         "@types/mocha": "^9.1.1",
-        "@types/node": "^16.18.3",
+        "@types/node": "^16.18.13",
         "@types/sinon": "^10.0.13",
-        "@types/vscode": "1.69.0",
-        "@vscode/test-electron": "^2.2.0",
+        "@types/vscode": "1.88.0",
+        "@typescript-eslint/eslint-plugin": "^5.60.1",
+        "@typescript-eslint/parser": "^5.60.1",
+        "@vscode/test-electron": "^2.3.8",
+        "eslint": "^8.43.0",
         "glob": "^7.2.3",
         "mocha": "^9.2.2",
         "sinon": "^14.0.2",
-        "ts-loader": "^9.3.1",
-        "tslint": "^6.1.3",
-        "typescript": "^4.9.3",
+        "ts-loader": "^9.4.2",
+        "typescript": "^4.9.4",
         "webpack": "^5.75.0",
         "webpack-cli": "^4.10.0"
     },
     "dependencies": {
-        "axios": "^1.2.2",
         "fs-extra": "^10.1.0",
         "get-port": "^4.2.0",
         "iconv-lite": "^0.6.3",
         "lodash": "^4.17.21",
-        "lru-cache": "^7.14.1",
-        "minimatch": "^6.2.0",
-        "node-localstorage": "^2.2.1",
-        "prettier": "^2.8.0",
+        "lru-cache": "^7.17.0",
+        "vscode-extension-telemetry-wrapper": "^0.13.3",
         "vscode-languageclient": "6.0.0-next.9",
-        "vscode-tas-client": "^0.1.63"
-    },
-    "license": "MIT"
+        "vscode-tas-client": "^0.1.75"
+    }
 }

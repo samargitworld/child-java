@@ -12,7 +12,7 @@
 package com.microsoft.java.test.plugin.launchers;
 
 import com.google.gson.Gson;
-import com.microsoft.java.test.plugin.launchers.JUnitLaunchConfigurationDelegate.JUnitLaunchArguments;
+import com.microsoft.java.test.plugin.model.Response;
 import com.microsoft.java.test.plugin.model.TestKind;
 import com.microsoft.java.test.plugin.model.TestLevel;
 import com.microsoft.java.test.plugin.util.JUnitPlugin;
@@ -60,7 +60,7 @@ public class JUnitLaunchUtils {
      * @throws URISyntaxException
      * @throws CoreException
      */
-    public static JUnitLaunchArguments resolveLaunchArgument(List<Object> arguments, IProgressMonitor monitor)
+    public static Response<JUnitLaunchArguments> resolveLaunchArgument(List<Object> arguments, IProgressMonitor monitor)
             throws URISyntaxException, CoreException {
         final Gson gson = new Gson();
         final Argument args = gson.fromJson((String) arguments.get(0), Argument.class);
@@ -94,12 +94,25 @@ public class JUnitLaunchUtils {
             return null;
         }
 
+        final Response<JUnitLaunchArguments> result;
         if (TESTNG_LOADER.equals(info.testKind)) {
             // TestNG is not suported yet, we only use the junit launch configuration to resolve the classpath
-            return resolveTestNGLaunchArguments(configuration, javaProject, delegate);
+            result = resolveTestNGLaunchArguments(configuration, javaProject, delegate);
+        } else {
+            result = delegate.getJUnitLaunchArguments(configuration, "run", monitor);
         }
 
-        return delegate.getJUnitLaunchArguments(configuration, "run", monitor);
+        if (result != null && result.getStatus() == Response.OK) {
+            // If the project is unmanaged folder, we need to set the working directory
+            // to the folder that is opened in the editor.
+            if (ProjectUtils.isUnmanagedFolder(javaProject.getProject())) {
+                final IPath realLocation = ProjectUtils.getProjectRealFolder(javaProject.getProject());
+                if (realLocation != null) {
+                    result.getBody().workingDirectory = realLocation.toOSString();
+                }
+            }
+        }
+        return result;
     }
 
     public static void addOverrideDependencies(List<String> vmArgs, String dependencies) {
@@ -109,7 +122,7 @@ public class JUnitLaunchUtils {
         }
     }
 
-    private static JUnitLaunchArguments resolveTestNGLaunchArguments(ILaunchConfiguration configuration,
+    private static Response<JUnitLaunchArguments> resolveTestNGLaunchArguments(ILaunchConfiguration configuration,
             IJavaProject javaProject, JUnitLaunchConfigurationDelegate delegate) throws CoreException {
         final IRuntimeClasspathEntry[] unresolved = JavaRuntime.computeUnresolvedRuntimeClasspath(configuration);
         final IRuntimeClasspathEntry[] resolved = JavaRuntime.resolveRuntimeClasspath(unresolved, configuration);
@@ -154,7 +167,7 @@ public class JUnitLaunchUtils {
         addOverrideDependencies(vmArgs, delegate.getModuleCLIOptions(configuration));
         launchArguments.vmArguments = vmArgs.toArray(new String[vmArgs.size()]);
 
-        return launchArguments;
+        return new Response<>(launchArguments, null);
     }
 
     /**

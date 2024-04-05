@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 import { commands } from 'vscode';
+import { sendError } from 'vscode-extension-telemetry-wrapper';
 import { JavaLanguageServerCommands } from '../constants';
 
 export async function executeJavaLanguageServerCommand<T>(...rest: any[]): Promise<T | undefined> {
@@ -11,6 +12,7 @@ export async function executeJavaLanguageServerCommand<T>(...rest: any[]): Promi
         if (isCancelledError(error)) {
             return;
         }
+        sendError(error);
         throw error;
     }
 }

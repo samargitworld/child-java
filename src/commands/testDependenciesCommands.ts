@@ -13,6 +13,7 @@ import { IJavaTestItem, ProjectType, TestKind } from '../types';
 import { createWriteStream, WriteStream } from 'fs';
 import { URL } from 'url';
 import { ClientRequest, IncomingMessage } from 'http';
+import { sendError } from 'vscode-extension-telemetry-wrapper';
 
 export async function enableTests(testKind?: TestKind): Promise<void> {
     const project: IJavaTestItem | undefined = await getTargetProject();
@@ -43,6 +44,7 @@ async function getTargetProject(): Promise<IJavaTestItem | undefined> {
     });
 
     if (testProjects.length === 0) {
+        sendError(new Error('Failed to find a project to enable tests.'));
         return undefined;
     }
 
@@ -81,7 +83,9 @@ async function setupUnmanagedFolder(projectUri: Uri, testKind?: TestKind): Promi
             }
         });
     } catch (e) {
-       
+        if (e?.message !== 'User cancelled') {
+            sendError(e);
+        }
         if (!libFolderExists) {
             fse.remove(libFolder);
         }
@@ -133,7 +137,7 @@ function getJarIds(testKind: TestKind): IArtifactMetadata[] {
             return [{
                 groupId: 'org.junit.platform',
                 artifactId: 'junit-platform-console-standalone',
-                defaultVersion: '1.9.1',
+                defaultVersion: '1.9.3',
             }];
         case TestKind.JUnit:
             return [{
@@ -150,7 +154,7 @@ function getJarIds(testKind: TestKind): IArtifactMetadata[] {
             return [{
                 groupId: 'org.testng',
                 artifactId: 'testng',
-                defaultVersion: '7.6.1',
+                defaultVersion: '7.8.0',
             }, {
                 groupId: 'com.beust',
                 artifactId: 'jcommander',
@@ -158,7 +162,7 @@ function getJarIds(testKind: TestKind): IArtifactMetadata[] {
             }, {
                 groupId: 'org.slf4j',
                 artifactId: 'slf4j-api',
-                defaultVersion: '2.0.5',
+                defaultVersion: '2.0.7',
             }];
         default:
             return [];
@@ -170,13 +174,15 @@ async function getLatestVersion(groupId: string, artifactId: string): Promise<st
         const response: any = await getHttpsAsJSON(getQueryLink(groupId, artifactId));
 
         if (!response.response?.docs?.[0]?.latestVersion) {
+            sendError(new Error('Invalid format for the latest version response'));
             return undefined;
         }
         return response.response.docs[0].latestVersion;
-    }finally{
-        
-        return undefined;
+    } catch (e) {
+        sendError(new Error(`Failed to fetch the latest version for ${groupId}:${artifactId}`));
     }
+
+    return undefined;
 }
 
 async function downloadJar(
@@ -187,8 +193,8 @@ async function downloadJar(
     totalJars: number,
     progress: Progress<{message?: string; increment?: number}>,
     token: CancellationToken
-    ): Promise<void> {
-    // tslint:disable-next-line: typedef
+): Promise<void> {
+    // eslint-disable-next-line @typescript-eslint/typedef
     await new Promise<void>(async (resolve, reject) => {
         progress.report({
             message: `Downloading ${artifactId}-${version}.jar...`,
@@ -268,7 +274,7 @@ async function updateProjectSettings(projectUri: Uri, libFolder: string): Promis
 }
 
 async function getHttpsAsJSON(link: string): Promise<any> {
-    // tslint:disable-next-line: typedef
+    // eslint-disable-next-line @typescript-eslint/typedef
     const response: string = await new Promise<string>((resolve, reject) => {
         let result: string = '';
         https.get(link, {
@@ -292,20 +298,20 @@ async function getHttpsAsJSON(link: string): Promise<any> {
 }
 
 async function getTotalBytes(url: string): Promise<number> {
-  // tslint:disable-next-line: typedef
-  return new Promise<number>((resolve, reject) => {
-    const link: URL = new URL(url);
-    const req: ClientRequest = https.request({
-      host: link.host,
-      path: link.pathname,
-      method: 'HEAD'
-    }, (res: http.IncomingMessage) => {
-      const num: number = parseInt(res.headers['content-length'] as string, 10);
-      resolve(num);
+    // eslint-disable-next-line @typescript-eslint/typedef
+    return new Promise<number>((resolve, reject) => {
+        const link: URL = new URL(url);
+        const req: ClientRequest = https.request({
+            host: link.host,
+            path: link.pathname,
+            method: 'HEAD'
+        }, (res: http.IncomingMessage) => {
+            const num: number = parseInt(res.headers['content-length'] as string, 10);
+            resolve(num);
+        });
+        req.on('error', reject);
+        req.end();
     });
-    req.on('error', reject);
-    req.end();
-  });
 }
 
 function getQueryLink(groupId: string, artifactId: string): string {

@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 import { DebugConfiguration, TestItem, TestRunRequest } from 'vscode';
+import { sendInfo } from 'vscode-extension-telemetry-wrapper';
 import { runTests, testController } from '../controller/testController';
 import { loadJavaProjects } from '../controller/utils';
 import { showTestItemsInCurrentFile } from '../extension';
@@ -37,6 +38,7 @@ export async function runTestsFromTestExplorer(testItem: TestItem, launchConfigu
 }
 
 export async function refreshExplorer(): Promise<void> {
+    sendInfo('', { name: 'refreshTests' });
     testController?.items.forEach((root: TestItem) => {
         testController?.items.delete(root.id);
     });

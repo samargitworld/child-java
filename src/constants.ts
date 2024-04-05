@@ -16,6 +16,7 @@ export namespace JavaTestRunnerDelegateCommands {
     export const FIND_TEST_TYPES_AND_METHODS: string = 'vscode.java.test.findTestTypesAndMethods';
     export const RESOLVE_PATH: string = 'vscode.java.test.resolvePath';
     export const NAVIGATE_TO_TEST_OR_TARGET: string = 'vscode.java.test.navigateToTestOrTarget';
+    export const GET_COVERAGE_DETAIL: string = 'vscode.java.test.jacoco.getCoverageDetail';
 }
 
 export namespace JavaTestRunnerCommands {
@@ -66,8 +67,18 @@ export namespace Context {
 }
 
 /**
- * This is the prefix of the invocation test item's id.
- * Invocation test items are created during test run.
- * For example, the invocations from a parameterized test.
+ * The different part keys returned by the JUnit test runner,
+ * which are used to identify the test cases.
  */
-export const INVOCATION_PREFIX: string = '[__INVOCATION__]-';
+export namespace JUnitTestPart {
+    export const CLASS: string = 'class:';
+    export const NESTED_CLASS: string = 'nested-class:';
+    export const METHOD: string = 'method:';
+    export const TEST_FACTORY: string = 'test-factory:';
+    // Property id is for jqwik
+    export const PROPERTY: string = 'property:';
+    export const TEST_TEMPLATE: string = 'test-template:';
+    export const TEST_TEMPLATE_INVOCATION: string = 'test-template-invocation:';
+    export const DYNAMIC_CONTAINER: string = 'dynamic-container:';
+    export const DYNAMIC_TEST: string = 'dynamic-test:';
+}

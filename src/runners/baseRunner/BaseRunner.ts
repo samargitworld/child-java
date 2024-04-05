@@ -6,15 +6,13 @@ import * as iconv from 'iconv-lite';
 import { AddressInfo, createServer, Server, Socket } from 'net';
 import * as os from 'os';
 import { CancellationToken, debug, DebugConfiguration, DebugSession, Disposable } from 'vscode';
+import { sendError } from 'vscode-extension-telemetry-wrapper';
 import { Configurations } from '../../constants';
 import { IProgressReporter } from '../../debugger.api';
 import { IExecutionConfig } from '../../runConfigs';
 import { IRunTestContext } from '../../types';
-import { AppConstants } from '../../util/app-constants';
 import { ITestRunner } from '../ITestRunner';
 import { RunnerResultAnalyzer } from './RunnerResultAnalyzer';
-import { CloudLabRequestDTO } from '../../dto/request/cloud-lab-request-dto';
-import { AppUtil } from '../../util/app-util';
 
 export abstract class BaseRunner implements ITestRunner {
     protected server: Server;
@@ -30,7 +28,7 @@ export abstract class BaseRunner implements ITestRunner {
         this.runnerResultAnalyzer = this.getAnalyzer();
     }
 
-    public async run(launchConfiguration: DebugConfiguration, token: CancellationToken, progressReporter?: IProgressReporter,cloudLabRequestDTO?:CloudLabRequestDTO): Promise<void> {
+    public async run(launchConfiguration: DebugConfiguration, token: CancellationToken, progressReporter?: IProgressReporter): Promise<void> {
         let data: string = '';
         this.server.on('connection', (socket: Socket) => {
             this.socket = socket;
@@ -42,10 +40,7 @@ export abstract class BaseRunner implements ITestRunner {
                 data = data.concat(iconv.decode(buffer, launchConfiguration.encoding || 'utf8'));
                 const index: number = data.lastIndexOf(os.EOL);
                 if (index >= 0) {
-                    if(cloudLabRequestDTO!==null && cloudLabRequestDTO!==undefined){
-                        AppUtil.sendExtensionLogToRevPro(null,cloudLabRequestDTO.revproWorkspaceId,"analyzeData from BaseRunner");
-                        }
-                    this.runnerResultAnalyzer.analyzeData(data.substring(0, index + os.EOL.length),AppConstants.ON_RUNNING,cloudLabRequestDTO);
+                    this.runnerResultAnalyzer.analyzeData(data.substring(0, index + os.EOL.length));
                     data = data.substring(index + os.EOL.length);
                 }
             });
@@ -90,8 +85,8 @@ export abstract class BaseRunner implements ITestRunner {
                         if (launchConfiguration.name === session.name) {
                             debugSession = undefined;
                             this.tearDown();
-                            if (data.length >= 0) {
-                                this.runnerResultAnalyzer.analyzeData(data,AppConstants.ON_TERMINATE,cloudLabRequestDTO);
+                            if (data.length > 0) {
+                                this.runnerResultAnalyzer.analyzeData(data);
                             }
                             return resolve();
                         }
@@ -119,8 +114,8 @@ export abstract class BaseRunner implements ITestRunner {
             for (const disposable of this.disposables) {
                 disposable.dispose();
             }
-        } finally{
-            
+        } catch (error) {
+            sendError(error);
         }
     }
 
@@ -128,7 +123,7 @@ export abstract class BaseRunner implements ITestRunner {
         const applicationArgs: string[] = [];
         applicationArgs.push(`${(this.server.address() as AddressInfo).port}`);
 
-        applicationArgs.push(...this.getRunnerCommandParams(config));
+        applicationArgs.push(...this.getRunnerCommandParams());
 
         if (config && config.args) {
             applicationArgs.push(...config.args.filter(Boolean));
@@ -145,7 +140,7 @@ export abstract class BaseRunner implements ITestRunner {
         });
     }
 
-    protected getRunnerCommandParams(_config?: IExecutionConfig): string[] {
+    protected getRunnerCommandParams(): string[] {
         return [];
     }
 
@@ -160,4 +155,10 @@ export interface IJUnitLaunchArguments {
     modulepath: string[];
     vmArguments: string[];
     programArguments: string[];
+}
+
+export interface Response<T> {
+    body: T | undefined;
+    status: number;
+    errorMessage: string | undefined;
 }

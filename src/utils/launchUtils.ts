@@ -2,15 +2,17 @@
 // Licensed under the MIT license.
 
 import * as path from 'path';
-import { DebugConfiguration, TestItem } from 'vscode';
+import * as os from 'os';
+import { DebugConfiguration, TestItem, TestRunProfileKind } from 'vscode';
+import { sendError, sendInfo } from 'vscode-extension-telemetry-wrapper';
 import { JavaTestRunnerDelegateCommands } from '../constants';
 import { dataCache } from '../controller/testItemDataCache';
 import { extensionContext } from '../extension';
 import { IExecutionConfig } from '../runConfigs';
-import { BaseRunner } from '../runners/baseRunner/BaseRunner';
-import { IJUnitLaunchArguments } from '../runners/baseRunner/BaseRunner';
+import { BaseRunner, IJUnitLaunchArguments, Response } from '../runners/baseRunner/BaseRunner';
 import { IRunTestContext, TestKind, TestLevel } from '../types';
 import { executeJavaLanguageServerCommand } from './commandUtils';
+import { getJacocoAgentPath, getJacocoDataFilePath } from './coverageUtils';
 
 export async function resolveLaunchConfigurationForRunner(runner: BaseRunner, testContext: IRunTestContext, config?: IExecutionConfig): Promise<DebugConfiguration> {
     const launchArguments: IJUnitLaunchArguments = await getLaunchArguments(testContext);
@@ -21,8 +23,9 @@ export async function resolveLaunchConfigurationForRunner(runner: BaseRunner, te
         launchArguments.vmArguments.push(...config.vmargs.filter(Boolean));
     }
 
+    let debugConfiguration: DebugConfiguration;
     if (testContext.kind === TestKind.TestNG) {
-        return {
+        debugConfiguration = {
             name: `Launch Java Tests - ${testContext.testItems[0].label}`,
             type: 'java',
             request: 'launch',
@@ -45,41 +48,59 @@ export async function resolveLaunchConfigurationForRunner(runner: BaseRunner, te
             noDebug: !testContext.isDebug,
             sourcePaths: config?.sourcePaths,
             preLaunchTask: config?.preLaunchTask,
+            postDebugTask: config?.postDebugTask,
+            javaExec: config?.javaExec,
+        };
+    } else {
+        debugConfiguration = {
+            name: `Launch Java Tests - ${testContext.testItems[0].label}`,
+            type: 'java',
+            request: 'launch',
+            mainClass: launchArguments.mainClass,
+            projectName: launchArguments.projectName,
+            cwd: config && config.workingDirectory ? config.workingDirectory : launchArguments.workingDirectory,
+            classPaths: [
+                ...config?.classPaths || [],
+                ...launchArguments.classpath || [],
+            ],
+            modulePaths: [
+                ...config?.modulePaths || [],
+                ...launchArguments.modulepath || [],
+            ],
+            args: [
+                ...launchArguments.programArguments,
+                ...(testContext.kind === TestKind.JUnit5 ? parseTags(config) : [])
+            ],
+            vmArgs: launchArguments.vmArguments,
+            env: config?.env,
+            envFile: config?.envFile,
+            noDebug: !testContext.isDebug,
+            sourcePaths: config?.sourcePaths,
+            preLaunchTask: config?.preLaunchTask,
+            postDebugTask: config?.postDebugTask,
+            javaExec: config?.javaExec,
         };
     }
 
-    return {
-        name: `Launch Java Tests - ${testContext.testItems[0].label}`,
-        type: 'java',
-        request: 'launch',
-        mainClass: launchArguments.mainClass,
-        projectName: launchArguments.projectName,
-        cwd: config && config.workingDirectory ? config.workingDirectory : launchArguments.workingDirectory,
-        classPaths: [
-            ...config?.classPaths || [],
-            ...launchArguments.classpath || [],
-        ],
-        modulePaths: [
-            ...config?.modulePaths || [],
-            ...launchArguments.modulepath || [],
-        ],
-        args: [
-            ...launchArguments.programArguments,
-            ...(testContext.kind === TestKind.JUnit5 ? parseTags(config) : [])
-        ],
-        vmArgs: launchArguments.vmArguments,
-        env: config?.env,
-        envFile: config?.envFile,
-        noDebug: !testContext.isDebug,
-        sourcePaths: config?.sourcePaths,
-        preLaunchTask: config?.preLaunchTask,
-    };
+    if (testContext.profile?.kind === TestRunProfileKind.Coverage) {
+        let agentArg: string = `-javaagent:${getJacocoAgentPath()}=destfile=${getJacocoDataFilePath(launchArguments.projectName)}`;
+        if (config?.coverage?.appendResult === false) {
+            agentArg += ',append=false';
+        }
+        if (os.platform() === 'win32') {
+            agentArg = `"${agentArg}"`;
+        }
+        (debugConfiguration.vmArgs as string[]).push(agentArg);
+    }
+
+    return debugConfiguration;
 }
 
 async function getLaunchArguments(testContext: IRunTestContext): Promise<IJUnitLaunchArguments> {
     const testLevel: TestLevel | undefined = dataCache.get(testContext.testItems[0])?.testLevel;
     if (testLevel === undefined) {
         const error: Error = new Error('Failed to get the required metadata to run');
+        sendError(error);
         throw error;
     }
 
@@ -87,7 +108,9 @@ async function getLaunchArguments(testContext: IRunTestContext): Promise<IJUnitL
     const uniqueId: string | undefined = testContext.testItems.length === 1 ?
         dataCache.get(testContext.testItems[0])?.uniqueId : undefined;
 
-   
+    if (uniqueId) {
+        sendInfo('', { runJunitInvocation: 'true' });
+    }
 
     return await resolveJUnitLaunchArguments(
         testContext.projectName,
@@ -117,7 +140,7 @@ function getTestNames(testContext: IRunTestContext): string[] {
 }
 
 async function resolveJUnitLaunchArguments(projectName: string, testLevel: TestLevel, testKind: TestKind, testNames: string[], uniqueId: string | undefined): Promise<IJUnitLaunchArguments> {
-    const argument: IJUnitLaunchArguments | undefined = await executeJavaLanguageServerCommand<IJUnitLaunchArguments>(
+    const argument: Response<IJUnitLaunchArguments> | undefined = await executeJavaLanguageServerCommand<Response<IJUnitLaunchArguments>>(
         JavaTestRunnerDelegateCommands.RESOLVE_JUNIT_ARGUMENT, JSON.stringify({
             projectName,
             testLevel,
@@ -127,12 +150,13 @@ async function resolveJUnitLaunchArguments(projectName: string, testLevel: TestL
         }),
     );
 
-    if (!argument) {
-        const error: Error = new Error('Failed to parse the JUnit launch arguments');
+    if (!argument?.body || argument.errorMessage) {
+        const error: Error = new Error(argument?.errorMessage || 'Failed to parse the JUnit launch arguments');
+        sendError(error);
         throw error;
     }
 
-    return argument;
+    return argument.body;
 }
 
 /**
@@ -163,11 +187,15 @@ function parseTags(config: IExecutionConfig | undefined): string[] {
             tags.push(tag);
         }
     }
-   
+    if (tags.length) {
+        sendInfo('', {
+            testFilters: 'tags'
+        });
+    }
     return tags;
 }
 
-// tslint:disable-next-line: typedef
+// eslint-disable-next-line @typescript-eslint/typedef
 export const exportedForTesting = {
     parseTags
 }

@@ -2,15 +2,13 @@
 // Licensed under the MIT license.
 
 import * as path from 'path';
-import { Location, MarkdownString, Range, TestItem, TestMessage } from 'vscode';
+import { Location, MarkdownString, Range, TestItem } from 'vscode';
 import { IRunTestContext } from '../../types';
-import { setTestState, TestResultState } from '../utils';
-import { CloudLabRequestDTO } from '../../dto/request/cloud-lab-request-dto';
 
 export abstract class RunnerResultAnalyzer {
-    constructor(protected testContext: IRunTestContext) { 
-    }
-    public abstract analyzeData(data: string,status:string,cloudLabRequestDTO?:CloudLabRequestDTO): void;
+    constructor(protected testContext: IRunTestContext) { }
+
+    public abstract analyzeData(data: string): void;
     public abstract processData(data: string): void;
     protected testMessageLocation: Location | undefined;
 
@@ -22,7 +20,7 @@ export abstract class RunnerResultAnalyzer {
         return [];
     }
 
-    protected processStackTrace(data: string, traces: MarkdownString, assertionFailure: TestMessage | undefined, currentItem: TestItem | undefined, projectName: string): void {
+    protected processStackTrace(data: string, traces: MarkdownString, currentItem: TestItem | undefined, projectName: string): void {
         const traceRegExp: RegExp = /(\s?at\s+)([\w$\\.]+\/)?((?:[\w$]+\.)+[<\w$>]+)\((.*)\)/;
         const traceResults: RegExpExecArray | null = traceRegExp.exec(data);
         if (traceResults) {
@@ -55,10 +53,6 @@ export abstract class RunnerResultAnalyzer {
                         } else {
                             this.testMessageLocation = new Location(currentItem.uri, new Range(currentItem.range.start.line, 0, currentItem.range.start.line, 0));
                         }
-                    }
-                    if (assertionFailure) {
-                        assertionFailure.location = this.testMessageLocation;
-                        setTestState(this.testContext.testRun, currentItem, TestResultState.Failed, assertionFailure);
                     }
                 }
             }

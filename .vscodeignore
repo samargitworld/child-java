@@ -1,17 +1,10 @@
 .vscode/**
 .vscode-test/**
 out/**
-node_modules/**
-src/**
-.gitignore
-.yarnrc
-webpack.config.js
-vsc-extension-quickstart.md
-**/tsconfig.json
-**/.eslintrc.json
-**/*.map
-**/*.ts
 test/**
+src/**
+**/*.map
+.gitignore
 tsconfig.json
 tslint.json
 package-lock.json
@@ -27,6 +20,8 @@ CONTRIBUTING.md
 extension.bundle.ts
 javaConfig.json
 .github/**
+.azure-pipelines/**
+vscode.d.ts
 
 # Ignore output of code sign
 server/*.md
