@@ -1,0 +1,63 @@
+{
+	"configurations": [
+		{
+			"args": [
+				"--extensionDevelopmentPath=${workspaceRoot}"
+			],
+			"env": {
+				"DEBUG_VSCODE_JAVA": "true"
+			},
+			"name": "Launch Extension",
+			"outFiles": [
+				"${workspaceRoot}/dist/**/*.js"
+			],
+			"preLaunchTask": "npm: watch",
+			"request": "launch",
+			"runtimeExecutable": "${execPath}",
+			"sourceMaps": true,
+			"stopOnEntry": false,
+			"type": "extensionHost"
+		},
+		{
+			"hostName": "localhost",
+			"name": "Debug Test Runner Java Plugin (Attach)",
+			"port": 1044,
+			"projectName": "com.microsoft.java.test.plugin",
+			"request": "attach",
+			"type": "java"
+		},
+		{
+			"args": [
+				"${workspaceFolder}/test/test-projects/junit",
+				"--extensionDevelopmentPath=${workspaceFolder}",
+				"--extensionTestsPath=${workspaceFolder}/out/test/suite"
+			],
+			"name": "Launch Tests (maven-junit)",
+			"outFiles": [
+				"${workspaceFolder}/dist/**/*.js"
+			],
+			"preLaunchTask": "npm: compile",
+			"request": "launch",
+			"runtimeExecutable": "${execPath}",
+			"sourceMaps": true,
+			"type": "extensionHost"
+		},
+		{
+			"args": [
+				"${workspaceFolder}/test/test-projects/simple",
+				"--extensionDevelopmentPath=${workspaceFolder}",
+				"--extensionTestsPath=${workspaceFolder}/out/test/unmanaged-folder-suite"
+			],
+			"name": "Launch Tests (unmanaged-folder)",
+			"outFiles": [
+				"${workspaceFolder}/dist/**/*.js"
+			],
+			"preLaunchTask": "npm: compile",
+			"request": "launch",
+			"runtimeExecutable": "${execPath}",
+			"sourceMaps": true,
+			"type": "extensionHost"
+		}
+	],
+	"version": "0.1.0"
+}
